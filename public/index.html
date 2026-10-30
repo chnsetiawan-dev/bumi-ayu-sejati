@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Penjualan Bumi Ayu</title>
+<style>
+:root{--bg:#f2f4f8;--card:#fff;--ink:#1b2430;--mut:#6b7686;--line:#e3e7ee;--pri:#1f5fbf;--ok:#1e8a4c;--warn:#c98a00;--bad:#c62828}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+header{background:var(--pri);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header b{font-size:16px}header small{opacity:.85}header button{background:#ffffff22;color:#fff;border:0;border-radius:8px;padding:6px 10px}
+nav{display:flex;gap:4px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);padding:6px 8px;position:sticky;top:52px;z-index:4}
+nav a{white-space:nowrap;padding:7px 12px;border-radius:99px;color:var(--mut);text-decoration:none;font-weight:600;font-size:13px}
+nav a.on{background:var(--pri);color:#fff}
+main{max-width:1000px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}.stat small{color:var(--mut)}.stat b{display:block;font-size:18px}
+.cols{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:800px){.cols{grid-template-columns:1fr 1fr}}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px}td.r,th.r{text-align:right}.scroll{overflow-x:auto}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;background:#e6eefb;color:var(--pri);white-space:nowrap}
+.tag.ok{background:#e3f4ea;color:var(--ok)}.tag.warn{background:#fdf3d8;color:var(--warn)}.tag.bad{background:#fde5e5;color:var(--bad)}
+.bar{height:8px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+.alert{background:#fff7e0;border:1px solid #f0d58a;border-radius:10px;padding:8px 10px;margin-bottom:8px}.alert.bad{background:#fdecec;border-color:#f2b8b8}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+label{display:block;font-size:12px;color:var(--mut);margin:8px 0 4px}
+button{font:inherit;cursor:pointer}.btn{padding:10px 14px;border:0;border-radius:10px;background:var(--pri);color:#fff;font-weight:700}
+.btn.sm{padding:5px 10px;font-size:12px}.btn.ghost{background:#eef2f8;color:var(--ink)}.btn.ok{background:var(--ok)}.btn.bad{background:var(--bad)}.btn.full{width:100%}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-bottom:1px dashed var(--line);align-items:center}
+.qty{display:flex;align-items:center;gap:4px}.qty button{width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:700}
+.qty input{width:70px;text-align:center;padding:7px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.chip{padding:6px 12px;border:1px solid var(--line);border-radius:99px;font-size:12px;background:#fff}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.sticky{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px;margin:0 -12px -12px;border-radius:0 0 12px 12px}
+.mut{color:var(--mut)}.k{font-family:ui-monospace,monospace;letter-spacing:2px}.red{color:var(--bad)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.login{max-width:360px;margin:60px auto}.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1b2430;color:#fff;padding:10px 16px;border-radius:10px;z-index:9}
+pre{white-space:pre-wrap;background:#f5f7fa;padding:10px;border-radius:10px}
+dialog{border:0;border-radius:14px;max-width:560px;width:94%;padding:16px}dialog::backdrop{background:#0006}
+</style></head><body>
+<div id="app"></div>
+<script>
+let TOKEN = localStorage.tok || '', ME = null, VIEW = '';
+const $ = s => document.querySelector(s);
+const rp = n => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+const num = n => (+n || 0).toLocaleString('id-ID');
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const toast = m => { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.append(d); setTimeout(() => d.remove(), 2600); };
+async function api(p, body) {
+  const r = await fetch('/api/' + p, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN }, body: body && JSON.stringify(body) });
+  const j = await r.json();
+  if (r.status === 401 && p !== 'login') { logout(); throw new Error(j.error); }
+  if (!r.ok) { toast(j.error); throw new Error(j.error); }
+  return j;
+}
+const STATUS = { pending: ['Menunggu persetujuan', 'warn'], approved: ['Siap kirim', ''], shipped: ['Terkirim', 'ok'], rejected: ['Ditolak', 'bad'] };
+const st = s => `<span class="tag ${STATUS[s][1]}">${STATUS[s][0]}</span>`;
+
+const MENUS = {
+  owner: [['pantau', 'Pantauan'], ['setuju', 'Persetujuan'], ['piutang', 'Piutang'], ['kpi', 'KPI'], ['orders', 'Order'], ['baru', '+ Order'],
+    ['pelanggan', 'Pelanggan'], ['harga', 'Harga & Stok'], ['target', 'Target'], ['retur', 'Retur'], ['disiplin', 'Disiplin'], ['rekap', 'Rekap'], ['lain', 'Ekspor & Log']],
+  admin: [['harga', 'Harga & Stok'], ['pelanggan', 'Pelanggan'], ['orders', 'Order'], ['baru', '+ Order'], ['retur', 'Retur'], ['target', 'Kuota'],
+    ['disiplin', 'Disiplin'], ['produk', 'Produk'], ['piutang', 'Piutang'], ['rekap', 'Rekap'], ['lain', 'Ekspor & Log']],
+  sales: [['baru', '+ Order'], ['pantau', 'Ringkasan'], ['orders', 'Order Saya'], ['pelanggan', 'Pelanggan'], ['kontak', 'Kontak'], ['piutang', 'Piutang'], ['kpi', 'KPI'], ['retur', 'Retur']],
+  finance: [['piutang', 'Piutang & Penerimaan'], ['orders', 'Nota'], ['rekap', 'Rekap'], ['lain', 'Ekspor']],
+  warehouse: [['kirim', 'Siap Kirim'], ['harga', 'Stok Pagi'], ['orders', 'Semua Order']],
+};
+
+function logout() { TOKEN = ''; localStorage.removeItem('tok'); ME = null; render(); }
+async function render() {
+  if (!TOKEN) return loginView();
+  if (!ME) try { ME = await api('me'); } catch { return; }
+  const menu = MENUS[ME.role];
+  VIEW = location.hash.slice(1) || menu[0][0];
+  $('#app').innerHTML = `<header><div><b>Penjualan Bumi Ayu</b><br><small>${esc(ME.name)} · ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</small></div>
+    <button onclick="logout()">Keluar</button></header>
+    <nav>${menu.map(([k, l]) => `<a href="#${k}" class="${k === VIEW ? 'on' : ''}">${l}</a>`).join('')}</nav><main id="main">Memuat…</main>`;
+  try { await (V[VIEW] || V.pantau)(); } catch (e) { $('#main').innerHTML = `<div class="alert bad">${esc(e.message)}</div>`; }
+}
+window.onhashchange = render;
+
+async function loginView() {
+  const users = await api('users');
+  const roleName = { owner: 'Pemilik', admin: 'Admin', sales: 'Sales', finance: 'Keuangan', warehouse: 'Gudang' };
+  $('#app').innerHTML = `<div class="login card"><h2 style="margin-top:0">Penjualan Bumi Ayu</h2>
+    <label>Pengguna</label><select id="u">${users.map(u => `<option value="${u.username}">${esc(u.name)} — ${roleName[u.role]}</option>`).join('')}</select>
+    <label>PIN</label><input id="p" type="password" inputmode="numeric" value="1234">
+    <p class="mut" style="font-size:12px">Prototipe: semua PIN contoh = 1234</p><button class="btn full" id="go">Masuk</button></div>`;
+  $('#go').onclick = async () => { const r = await api('login', { username: $('#u').value, pin: $('#p').value }); TOKEN = r.token; localStorage.tok = TOKEN; ME = r.user; location.hash = ''; render(); };
+}
+
+const V = {};
+// ---------- Pantauan ----------
+V.pantau = async () => {
+  const d = await api('dashboard');
+  const tot = d.todayBySales.reduce((a, r) => a + r.rp, 0);
+  const ag = d.aging, sum = ag.belum + ag['1-7'] + ag['>7'] || 1;
+  const pend = d.pending.length + d.pendingCust.length;
+  $('#main').innerHTML = `
+  ${pend && ME.role === 'owner' ? `<a href="#setuju" style="text-decoration:none;color:inherit"><div class="alert bad"><b>${pend} menunggu persetujuan</b> · ${d.pending.length} order, ${d.pendingCust.length} pelanggan baru →</div></a>` : ''}
+  <div class="grid">
+    <div class="stat"><small>Penjualan hari ini</small><b>${rp(tot)}</b><small>${d.todayBySales.reduce((a, r) => a + r.nota, 0)} nota</small></div>
+    <div class="stat"><small>Belum dikirim</small><b>${d.unshipped} order</b></div>
+    <div class="stat"><small>Piutang</small><b>${rp(d.total)}</b><small class="red">${rp(ag['>7'])} lewat &gt;7 hr</small></div>
+    <div class="stat"><small>Pelanggan tidur</small><b>${d.sleeping.length}</b><small>&gt;14 hari tidak order</small></div>
+  </div>
+  <div class="cols">
+    <div class="card"><h3>Hari ini · per sales</h3><table>${d.todayBySales.map(r => `<tr><td>${esc(r.name || 'Akun pemilik')}</td><td class="r">${r.nota} nota</td><td class="r"><b>${rp(r.rp)}</b></td></tr>`).join('') || '<tr><td class="mut">Belum ada</td></tr>'}</table></div>
+    <div class="card"><h3>Hari ini · per produk</h3><table>${d.todayByProduct.map(r => `<tr><td>${esc(r.code)}</td><td class="r">${num(r.qty)} ${r.unit}</td><td class="r">${rp(r.rp)}</td></tr>`).join('') || '<tr><td class="mut">Belum ada</td></tr>'}</table></div>
+    <div class="card"><h3>Bulan ini · omzet vs target</h3>${d.kpi.map(k => `<div class="row" style="justify-content:space-between"><span>${esc(k.name)}</span><span>${rp(k.net)} · <b>${k.pct.toFixed(0)}%</b></span></div>
+      <div class="bar" style="margin:4px 0 10px"><i style="width:${Math.min(100, k.pct)}%;background:${k.pct >= 100 ? 'var(--ok)' : k.pct >= 80 ? 'var(--pri)' : 'var(--warn)'}"></i></div>`).join('')}</div>
+    <div class="card"><h3>Piutang · ${rp(d.total)}</h3>
+      <div style="display:flex;height:12px;border-radius:9px;overflow:hidden;margin-bottom:8px"><i style="width:${ag.belum / sum * 100}%;background:var(--ok)"></i><i style="width:${ag['1-7'] / sum * 100}%;background:var(--warn)"></i><i style="width:${ag['>7'] / sum * 100}%;background:var(--bad)"></i></div>
+      <table><tr><td>Belum jatuh tempo</td><td class="r">${rp(ag.belum)}</td></tr><tr><td>Lewat 1–7 hari</td><td class="r">${rp(ag['1-7'])}</td></tr><tr class="red"><td>Lewat &gt;7 hari</td><td class="r"><b>${rp(ag['>7'])}</b></td></tr></table>
+      <a href="#piutang" class="mut" style="font-size:12px">Lihat per pelanggan →</a></div>
+    <div class="card"><h3>Kartu KPI · bulan ini (sementara)</h3>${kpiTable(d.kpi)}</div>
+    <div class="card"><h3>Stok pagi & produk prioritas</h3><div class="scroll"><table><tr><th>Produk</th><th class="r">Stok</th><th class="r">Laku hari ini</th><th class="r">Sisa kuota bln</th></tr>
+      ${d.stock.map(s => `<tr><td>${s.priority ? '⭐ ' : ''}${esc(s.code)}</td><td class="r">${num(s.stock)} ${s.unit}</td><td class="r">${num(s.sold_today)}</td><td class="r">${s.quota ? num(Math.max(0, s.quota - s.sold_month)) : '–'}</td></tr>`).join('')}</table></div></div>
+    <div class="card"><h3>Pelanggan tidur (&gt;14 hari)</h3><table>${d.sleeping.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.sales || 'Pemilik')}</td><td class="r mut">${c.last || 'belum pernah'}</td></tr>`).join('') || '<tr><td class="mut">Tidak ada</td></tr>'}</table></div>
+  </div>`;
+};
+const kpiTable = k => `<div class="scroll"><table><tr><th>Sales</th><th>Omzet · Prior · Baru · Disiplin · Piutang</th><th class="r">Pengali</th></tr>
+  ${k.map(x => `<tr><td>${esc(x.name)}</td><td class="k">${x.checks.map(c => `<span title="${esc(c.k + ': ' + c.v)}" style="color:${c.ok ? 'var(--ok)' : 'var(--bad)'}">${c.ok ? '✓' : '✗'}</span>`).join('')} <span class="mut" style="letter-spacing:0">${x.n}/5</span></td>
+  <td class="r"><span class="tag ${x.mult >= 1 ? 'ok' : x.mult ? 'warn' : 'bad'}">×${String(x.mult).replace('.', ',')}</span></td></tr>`).join('')}</table></div>`;
+
+V.kpi = async () => {
+  const k = await api('kpi');
+  $('#main').innerHTML = `<div class="card"><h3>KPI ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</h3>
+  <p class="mut" style="margin-top:0">Dihitung otomatis; nilai final dikunci di akhir bulan. Pengali: 5 = 1,5 · 4 = 1 · 3 = 0,5 · 0–2 = 0.</p></div>
+  ${k.map(x => `<div class="card"><div class="row" style="justify-content:space-between"><b>${esc(x.name)}</b><span><span class="tag ${x.mult >= 1 ? 'ok' : x.mult ? 'warn' : 'bad'}">${x.n}/5 · ×${String(x.mult).replace('.', ',')}</span> ${x.bonus ? '· bonus ' + rp(x.bonus) : ''}</span></div>
+  <table>${x.checks.map((c, i) => `<tr><td>${c.ok ? '✅' : '❌'} ${i + 1}. ${c.k}</td><td class="r mut">${esc(c.v)}</td></tr>`).join('')}</table></div>`).join('')}`;
+};
+
+// ---------- Order baru ----------
+V.baru = async () => {
+  const [cust, prices] = await Promise.all([api('customers'), api('prices')]);
+  const ok = cust.filter(c => c.approved);
+  let C = null, filter = 'all', pay = 'cash';
+  const cart = {};
+  const draw = () => {
+    const list = prices.filter(p => filter === 'all' || (filter === 'prio' ? p.priority : p.code.startsWith(filter)));
+    const total = Object.entries(cart).reduce((a, [id, v]) => { const p = prices.find(x => x.product_id == id); return a + (C ? (p[C.price_group] - (v.disc || 0)) * (v.qty || 0) : 0); }, 0);
+    const warns = [];
+    if (C) {
+      if (C.maxLate > 7) warns.push(`Pelanggan menunggak ${C.maxLate} hari — order perlu persetujuan Pak Benny`);
+      if (pay === 'tempo' && C.isNew) warns.push('Pelanggan baru wajib cash — tempo perlu persetujuan Pak Benny');
+      Object.entries(cart).forEach(([id, v]) => { const p = prices.find(x => x.product_id == id); const max = { butir: 100, kg: 500 }[p.unit];
+        if (max != null && v.disc > max && v.qty) warns.push(`Potongan ${p.code} Rp ${v.disc}/${p.unit} melebihi batas Rp ${max} — perlu persetujuan`); });
+    }
+    $('#main').innerHTML = `<div class="card"><h3>Pelanggan</h3>
+      ${C ? `<div class="row" style="justify-content:space-between"><b style="font-size:16px">${esc(C.name)}</b><button class="btn sm ghost" id="cx">Ganti</button></div>` :
+        `<input id="cs" placeholder="🔍 Ketik nama pelanggan…" autocomplete="off"><div id="cl" style="max-height:320px;overflow:auto"></div>`}
+      ${C ? `<p class="mut" style="margin:6px 0 0">${esc(C.channel)} · harga ${C.price_group} · tempo ${C.tempo_days} hari ${C.isNew ? '· <span class="tag warn">baru</span>' : ''}</p>
+      ${C.piutang ? `<div class="alert ${C.maxLate > 7 ? 'bad' : ''}" style="margin-top:6px">Piutang berjalan ${rp(C.piutang)}${C.maxLate > 0 ? ` · telat ${C.maxLate} hari` : ''}</div>` : ''}` : ''}</div>
+    ${C ? `<div class="card"><h3>Produk · harga hari ini</h3>
+      <div class="chips">${[['all', 'Semua'], ['prio', '⭐ Prioritas'], ['AK', 'AK'], ['B', 'BA/BS'], ['PYH', 'Puyuh']].map(([k, l]) => `<button class="chip ${filter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
+      <input id="ps" placeholder="🔍 Cari produk (kode / nama)…" autocomplete="off" style="margin-bottom:4px">
+      ${list.map(p => { const v = cart[p.product_id] || {}; return `<div class="item" data-name="${esc((p.code + ' ' + p.name).toLowerCase())}"><div><b>${p.priority ? '⭐ ' : ''}${esc(p.name)}</b><br><small class="mut">${rp(p[C.price_group])}/${p.unit}${p.stock != null ? ' · stok ' + num(p.stock) : ''}</small>
+        ${v.qty ? `<br><small>Potongan Rp/${p.unit}: <input data-d="${p.product_id}" value="${v.disc || ''}" inputmode="numeric" style="width:80px;padding:4px"></small>` : ''}</div>
+        <div class="qty"><button data-m="${p.product_id}">−</button><input data-q="${p.product_id}" value="${v.qty || ''}" inputmode="numeric" placeholder="0"><button data-p="${p.product_id}">+</button></div></div>`; }).join('')}
+    </div>
+    <div class="card"><h3>Pembayaran & kirim</h3>
+      <div class="chips"><button class="chip ${pay === 'cash' ? 'on' : ''}" data-pay="cash">Cash</button><button class="chip ${pay === 'tempo' ? 'on' : ''}" data-pay="tempo">Tempo ${C.tempo_days} hari</button></div>
+      <label>Tanggal kirim</label><input type="date" id="ship" value="${$('#ship')?.value || new Date().toISOString().slice(0, 10)}">
+      <label>Catatan</label><input id="note" value="${esc($('#note')?.value || '')}">
+      ${warns.map(w => `<div class="alert bad" style="margin-top:8px">⚠ ${esc(w)}</div>`).join('')}
+      <div class="sticky"><div class="row" style="justify-content:space-between;margin-bottom:8px"><span>Total</span><b style="font-size:18px">${rp(total)}</b></div>
+      <button class="btn full" id="send">${warns.length && ME.role !== 'owner' ? 'Kirim untuk persetujuan' : 'Simpan Order'}</button></div></div>` : ''}`;
+    // pencarian pelanggan: daftar diperbarui tanpa menggambar ulang halaman supaya fokus ketik tidak hilang
+    const cs = $('#cs');
+    if (cs) {
+      const showC = () => { const q = cs.value.toLowerCase().trim();
+        const hits = ok.filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone || '').includes(q)).slice(0, 30);
+        $('#cl').innerHTML = hits.map(c => `<div class="item" data-c="${c.id}" style="cursor:pointer"><div><b>${esc(c.name)}</b><br><small class="mut">${esc(c.channel)} · ${c.price_group}${ME.role !== 'sales' ? ' · ' + esc(c.sales || 'Pemilik') : ''}</small></div>
+          ${c.maxLate > 7 ? '<span class="tag bad">nunggak</span>' : c.piutang ? '<span class="tag warn">ada piutang</span>' : ''}</div>`).join('') || '<p class="mut">Tidak ditemukan</p>';
+        $('#cl').querySelectorAll('[data-c]').forEach(d => d.onclick = () => { C = ok.find(c => c.id == d.dataset.c); draw(); }); };
+      cs.oninput = showC; showC(); cs.focus();
+    }
+    const cx = $('#cx'); if (cx) cx.onclick = () => { C = null; draw(); };
+    const ps = $('#ps'); if (ps) ps.oninput = () => { const q = ps.value.toLowerCase().trim();
+      document.querySelectorAll('.item[data-name]').forEach(d => d.style.display = !q || d.dataset.name.includes(q) ? '' : 'none'); };
+    document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
+    document.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => { pay = b.dataset.pay; draw(); });
+    const step = p => ({ butir: 100 })[prices.find(x => x.product_id == p).unit] || 1;
+    document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const id = b.dataset.p; cart[id] = cart[id] || {}; cart[id].qty = (+cart[id].qty || 0) + step(id); draw(); });
+    document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const id = b.dataset.m; if (cart[id]) cart[id].qty = Math.max(0, (+cart[id].qty || 0) - step(id)); draw(); });
+    document.querySelectorAll('[data-q]').forEach(i => i.onchange = () => { const id = i.dataset.q; cart[id] = cart[id] || {}; cart[id].qty = +i.value || 0; draw(); });
+    document.querySelectorAll('[data-d]').forEach(i => i.onchange = () => { cart[i.dataset.d].disc = +i.value || 0; draw(); });
+    const s = $('#send'); if (s) s.onclick = async () => {
+      const items = Object.entries(cart).filter(([, v]) => v.qty > 0).map(([id, v]) => ({ product_id: +id, qty: v.qty, discount: v.disc || 0 }));
+      const r = await api('orders', { customer_id: C.id, items, pay_type: pay, ship_date: $('#ship').value, note: $('#note').value });
+      toast(r.status === 'pending' ? `${r.no} dikirim ke Pak Benny untuk persetujuan` : `${r.no} tersimpan · ${rp(r.total)}`);
+      location.hash = 'orders';
+    };
+  };
+  draw();
+};
+
+// ---------- Daftar order ----------
+V.orders = async () => {
+  const o = await api('orders');
+  $('#main').innerHTML = `<div class="card"><h3>Order (${o.length} terakhir)</h3><div class="scroll"><table><tr><th>Nota</th><th>Tgl</th><th>Pelanggan</th>${ME.role !== 'sales' ? '<th>Sales</th>' : ''}<th>Bayar</th><th>Status</th><th class="r">Total</th></tr>
+  ${o.map(x => `<tr style="cursor:pointer" onclick="showOrder(${x.id})"><td>${x.no}</td><td>${x.date.slice(5)}</td><td>${esc(x.customer)}</td>${ME.role !== 'sales' ? `<td>${esc(x.sales || 'Pemilik')}</td>` : ''}
+  <td>${x.pay_type}</td><td>${st(x.status)}</td><td class="r">${rp(x.total)}</td></tr>`).join('')}</table></div></div>`;
+};
+async function showOrder(id) {
+  const o = await api('order?id=' + id);
+  const dlg = document.createElement('dialog');
+  dlg.innerHTML = `<div class="row" style="justify-content:space-between"><b>${o.no}</b>${st(o.status)}</div>
+  <p class="mut" style="margin:4px 0">${esc(o.customer)} · ${esc(o.sales || 'Akun pemilik')}<br>Order ${o.date} · kirim ${o.ship_date} · ${o.pay_type}${o.pay_type === 'tempo' ? ' · jatuh tempo ' + o.due_date : ''}</p>
+  ${o.approval_reason ? `<div class="alert">${esc(o.approval_reason)}</div>` : ''}
+  <table><tr><th>Produk</th><th class="r">Qty</th><th class="r">Harga</th><th class="r">Pot.</th><th class="r">Jumlah</th></tr>
+  ${o.items.map(i => `<tr><td>${esc(i.code)}</td><td class="r">${num(i.qty)} ${i.unit}</td><td class="r">${num(i.price)}</td><td class="r">${num(i.discount)}</td><td class="r">${rp((i.price - i.discount) * i.qty)}</td></tr>`).join('')}
+  <tr><td colspan="4"><b>Total</b></td><td class="r"><b>${rp(o.total)}</b></td></tr></table>
+  ${o.payments.length ? `<h4>Pembayaran</h4><table>${o.payments.map(p => `<tr><td>${p.date}</td><td>${esc(p.method)}</td><td class="r">${rp(p.amount)}</td></tr>`).join('')}</table>` : ''}
+  ${o.returns.length ? `<h4>Retur</h4><table>${o.returns.map(r => `<tr><td>${esc(r.code)} ${num(r.qty)}</td><td>${esc(r.reason)}</td><td>${r.status}</td><td class="r">${rp(r.amount)}</td></tr>`).join('')}</table>` : ''}
+  ${o.history.length ? `<h4>Riwayat perubahan</h4><table>${o.history.map(h => `<tr><td class="mut">${h.ts.slice(0, 16).replace('T', ' ')}</td><td>${esc(h.name)}</td><td>${h.action}</td></tr>`).join('')}</table>` : ''}
+  <p class="mut" style="font-size:12px">Nota tidak bisa dihapus; setiap perubahan tercatat.</p>
+  <div class="row" style="justify-content:flex-end">${o.status === 'approved' || o.status === 'shipped' ? `<button class="btn ghost" onclick="printSJ([${o.id}])">🖨 Surat jalan</button>` : ''}${ME.role === 'sales' || ME.role === 'admin' || ME.role === 'owner' ? (o.status === 'shipped' || o.status === 'approved' ? `<button class="btn ghost" id="ret">Catat retur</button>` : '') : ''}<button class="btn" onclick="this.closest('dialog').remove()">Tutup</button></div>`;
+  document.body.append(dlg); dlg.showModal();
+  const rb = dlg.querySelector('#ret'); if (rb) rb.onclick = () => { dlg.remove(); returnForm(o); };
+}
+function returnForm(o) {
+  const dlg = document.createElement('dialog');
+  dlg.innerHTML = `<b>Retur ${o.no}</b><label>Produk</label><select id="rp">${o.items.map(i => `<option value="${i.product_id}">${esc(i.code)} (${num(i.qty)} ${i.unit})</option>`).join('')}</select>
+  <label>Jumlah</label><input id="rq" inputmode="numeric"><label>Alasan</label><input id="rr" placeholder="mis. pecah saat kirim">
+  <p class="mut" style="font-size:12px">${ME.role === 'sales' ? 'Retur dari sales menunggu persetujuan admin.' : ''} Retur mengurangi penjualan sales.</p>
+  <div class="row" style="justify-content:flex-end"><button class="btn ghost" onclick="this.closest('dialog').remove()">Batal</button><button class="btn" id="rs">Simpan</button></div>`;
+  document.body.append(dlg); dlg.showModal();
+  dlg.querySelector('#rs').onclick = async () => { await api('returns', { order_id: o.id, product_id: +dlg.querySelector('#rp').value, qty: +dlg.querySelector('#rq').value, reason: dlg.querySelector('#rr').value }); dlg.remove(); toast('Retur dicatat'); render(); };
+}
+
+// ---------- Persetujuan ----------
+V.setuju = async () => {
+  const d = await api('dashboard');
+  $('#main').innerHTML = `<div class="card"><h3>Order menunggu persetujuan</h3>${d.pending.map(o => `<div class="item"><div><b style="cursor:pointer" onclick="showOrder(${o.id})">${o.no}</b> · ${esc(o.customer)} · ${esc(o.sales || '')}<br><small class="red">${esc(o.approval_reason)}</small><br><small>${rp(o.total)}</small></div>
+    <div class="row"><button class="btn sm bad" onclick="ap(${o.id},0)">Tolak</button><button class="btn sm ok" onclick="ap(${o.id},1)">Setujui</button></div></div>`).join('') || '<p class="mut">Tidak ada.</p>'}</div>
+  <div class="card"><h3>Pelanggan baru menunggu persetujuan</h3>${d.pendingCust.map(c => `<div class="item"><div><b>${esc(c.name)}</b> · ${esc(c.sales || '')}<br><small class="mut">${esc(c.channel)} · ${c.price_group} · ${esc(c.phone)}</small></div>
+    <div class="row"><select id="t${c.id}" style="width:auto"><option value="0">Cash</option><option value="14">Tempo 14 hr</option><option value="30">Tempo 30 hr</option></select><button class="btn sm ok" onclick="apc(${c.id})">Setujui</button></div></div>`).join('') || '<p class="mut">Tidak ada.</p>'}</div>`;
+};
+async function ap(id, ok) { await api('orders/approve', { id, ok }); toast(ok ? 'Disetujui' : 'Ditolak'); render(); }
+async function apc(id) { await api('customers/approve', { id, tempo_days: +$('#t' + id).value }); toast('Pelanggan disetujui'); render(); }
+
+// ---------- Piutang ----------
+V.piutang = async () => {
+  const r = await api('receivables');
+  const byC = {};
+  r.forEach(x => { const c = byC[x.customer] = byC[x.customer] || { name: x.customer, sales: x.sales, belum: 0, a: 0, b: 0, rows: [] }; c[x.bucket === 'belum' ? 'belum' : x.bucket === '1-7' ? 'a' : 'b'] += x.sisa; c.rows.push(x); });
+  const pay = ME.role === 'finance' || ME.role === 'owner' || ME.role === 'admin';
+  $('#main').innerHTML = `<div class="card"><h3>Piutang per pelanggan</h3><div class="scroll"><table><tr><th>Pelanggan</th><th>Sales</th><th class="r">Belum JT</th><th class="r">1–7 hr</th><th class="r">&gt;7 hr</th></tr>
+    ${Object.values(byC).sort((a, b) => b.b - a.b || b.a - a.a).map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.sales || 'Pemilik')}</td><td class="r">${c.belum ? rp(c.belum) : ''}</td><td class="r" style="color:var(--warn)">${c.a ? rp(c.a) : ''}</td><td class="r red"><b>${c.b ? rp(c.b) : ''}</b></td></tr>`).join('')}</table></div></div>
+  <div class="card"><h3>Nota belum lunas</h3><div class="scroll"><table><tr><th>Nota</th><th>Pelanggan</th><th>Jatuh tempo</th><th class="r">Sisa</th>${pay ? '<th></th>' : ''}</tr>
+    ${r.map(x => `<tr><td style="cursor:pointer" onclick="showOrder(${x.id})">${x.no}</td><td>${esc(x.customer)}</td><td>${x.due_date} ${x.late > 0 ? `<span class="tag ${x.late > 7 ? 'bad' : 'warn'}">+${x.late} hr</span>` : ''}</td><td class="r">${rp(x.sisa)}</td>
+    ${pay ? `<td><button class="btn sm" onclick='payForm(${JSON.stringify({ id: x.id, no: x.no, sisa: Math.round(x.sisa), customer: x.customer })})'>Terima pembayaran</button></td>` : ''}</tr>`).join('')}</table></div></div>`;
+};
+function payForm(o) {
+  const dlg = document.createElement('dialog');
+  dlg.innerHTML = `<b>Terima pembayaran ${o.no}</b><p class="mut" style="margin:4px 0">${esc(o.customer)} · sisa ${rp(o.sisa)}</p>
+  <label>Jumlah diterima</label><input id="pa" value="${o.sisa}" inputmode="numeric"><label>Tanggal diterima</label><input id="pd" type="date" value="${new Date().toISOString().slice(0, 10)}">
+  <label>Cara bayar</label><select id="pm"><option>Transfer</option><option>Tunai</option><option>Giro</option></select>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" onclick="this.closest('dialog').remove()">Batal</button><button class="btn" id="ps">Simpan</button></div>`;
+  document.body.append(dlg); dlg.showModal();
+  dlg.querySelector('#ps').onclick = async () => { await api('payments', { order_id: o.id, amount: +dlg.querySelector('#pa').value, date: dlg.querySelector('#pd').value, method: dlg.querySelector('#pm').value }); dlg.remove(); toast('Pembayaran diterima dicatat'); render(); };
+}
+
+// ---------- Gudang ----------
+V.kirim = async () => {
+  const o = await api('orders?status=approved');
+  const items = await Promise.all(o.map(x => api('order?id=' + x.id)));
+  $('#main').innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Order yang harus disiapkan (${o.length})</h3>
+    ${o.length ? `<button class="btn sm ghost" id="pall">🖨 Cetak semua surat jalan</button>` : ''}</div>${items.map(x => `<div class="item"><div><b>${x.no}</b> · kirim ${x.ship_date}<br>${esc(x.customer)} <small class="mut">${esc(x.address || '')}</small>
+    <br><small>${x.items.map(i => `${esc(i.code)} ${num(i.qty)} ${i.unit}`).join(' · ')}</small></div>
+    <div class="row"><button class="btn ghost" onclick="printSJ([${x.id}])">🖨 Surat jalan</button><button class="btn ok" onclick="ship(${x.id})">Sudah dikirim</button></div></div>`).join('') || '<p class="mut">Semua sudah dikirim.</p>'}</div>`;
+  const pa = $('#pall'); if (pa) pa.onclick = () => printSJ(o.map(x => x.id));
+};
+
+// surat jalan: tanpa harga, satu halaman per nota
+async function printSJ(ids) {
+  const list = await Promise.all(ids.map(id => api('order?id=' + id)));
+  const tgl = d => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const w = window.open('', '_blank');
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Surat Jalan</title><style>
+  body{font:13px/1.4 Arial,sans-serif;color:#000;margin:0}.pg{padding:28px 34px;page-break-after:always}.pg:last-child{page-break-after:auto}
+  .hd{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:8px}.hd h1{margin:0;font-size:18px}.hd h2{margin:0;font-size:20px;letter-spacing:2px}
+  .info{display:flex;justify-content:space-between;gap:20px;margin:14px 0}.info td{padding:2px 8px 2px 0;vertical-align:top}
+  table.it{width:100%;border-collapse:collapse}.it th,.it td{border:1px solid #000;padding:6px 8px}.it th{background:#eee}.r{text-align:right}
+  .sig{display:flex;justify-content:space-between;margin-top:36px;text-align:center}.sig div{width:30%}.sig span{display:block;margin-top:60px;border-top:1px solid #000;padding-top:4px}
+  @media print{button{display:none}}</style></head><body>
+  <button onclick="print()" style="position:fixed;right:16px;top:16px;padding:10px 16px;font-size:14px">🖨 Cetak</button>
+  ${list.map(o => `<div class="pg"><div class="hd"><div><h1>PT BUMI AYU SEJATI</h1><small>Alamat perusahaan · Telp</small></div><div style="text-align:right"><h2>SURAT JALAN</h2>No. SJ-${o.no.slice(2)}</div></div>
+  <div class="info"><table><tr><td>Kepada</td><td>: <b>${esc(o.customer)}</b></td></tr><tr><td>Alamat</td><td>: ${esc(o.address || '-')}</td></tr><tr><td>Telp</td><td>: ${esc(o.phone || '-')}</td></tr></table>
+  <table><tr><td>Tanggal kirim</td><td>: ${tgl(o.ship_date)}</td></tr><tr><td>No. Nota</td><td>: ${o.no}</td></tr><tr><td>Sales</td><td>: ${esc(o.sales || 'Pemilik')}</td></tr></table></div>
+  <table class="it"><tr><th style="width:40px">No</th><th>Kode</th><th>Nama barang</th><th class="r">Jumlah</th><th>Satuan</th><th>Keterangan</th></tr>
+  ${o.items.map((i, n) => `<tr><td>${n + 1}</td><td>${esc(i.code)}</td><td>${esc(i.name)}</td><td class="r">${num(i.qty)}</td><td>${i.unit}</td><td></td></tr>`).join('')}</table>
+  ${o.note ? `<p>Catatan: ${esc(o.note)}</p>` : ''}<p style="font-size:11px">Barang telah diterima dalam keadaan baik dan jumlah yang sesuai.</p>
+  <div class="sig"><div>Gudang<span>(..................)</span></div><div>Sopir / Pengirim<span>(..................)</span></div><div>Penerima<span>(..................)</span></div></div></div>`).join('')}
+  </body></html>`);
+  w.document.close();
+}
+async function ship(id) { await api('orders/ship', { id }); toast('Ditandai terkirim'); render(); }
+
+// ---------- Pelanggan ----------
+V.pelanggan = async () => {
+  const [c, users] = await Promise.all([api('customers'), api('users')]);
+  const salesList = users.filter(u => u.role === 'sales');
+  $('#main').innerHTML = `<div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Pelanggan (${c.length})</h3><button class="btn sm" id="add">+ Pelanggan</button></div></div>
+  <div class="card scroll"><table><tr><th>Nama</th>${ME.role !== 'sales' ? '<th>Sales</th>' : ''}<th>Saluran</th><th>Harga</th><th>Tempo</th><th class="r">Piutang</th><th></th></tr>
+  ${c.map(x => `<tr><td>${esc(x.name)} ${!x.approved ? '<span class="tag warn">menunggu</span>' : ''}<br><small class="mut">${esc(x.phone)}</small></td>${ME.role !== 'sales' ? `<td>${esc(x.sales || 'Pemilik')}</td>` : ''}
+  <td>${esc(x.channel)}</td><td>${x.price_group}</td><td>${x.tempo_days ? x.tempo_days + ' hr' : 'Cash'}</td><td class="r ${x.maxLate > 7 ? 'red' : ''}">${x.piutang ? rp(x.piutang) : ''}</td>
+  <td>${ME.role !== 'sales' ? `<button class="btn sm ghost" data-e="${x.id}">Ubah</button>` : ''}</td></tr>`).join('')}</table></div>`;
+  const form = x => {
+    x = x || { channel: 'Lokal', price_group: 'Jbr', tempo_days: 0 };
+    const dlg = document.createElement('dialog');
+    dlg.innerHTML = `<b>${x.id ? 'Ubah' : 'Tambah'} pelanggan</b>
+    <label>Nama (tanpa PT/CV/Toko)</label><input id="n" value="${esc(x.id ? x.name.replace(/, [^,]+$/, x.entity ? '' : '$&') : '')}" placeholder="mis. Superindo, Amir, Makmur Jaya" autocomplete="off">
+    <label>Badan usaha</label><select id="en">${['PT', 'CV', 'UD', 'Toko', 'Warung', 'Agen', 'Kios', 'Resto', 'Koperasi', 'Perorangan'].map(e => `<option ${(x.entity || 'Toko') === e ? 'selected' : ''}>${e}</option>`).join('')}</select>
+    <div id="nprev" style="margin-top:8px"></div>
+    <label>Telepon</label><input id="ph" value="${esc(x.phone || '')}"><label>Alamat</label><input id="ad" value="${esc(x.address || '')}">
+    ${ME.role !== 'sales' ? `<label>Sales pemilik</label><select id="s"><option value="">Akun pemilik</option>${salesList.map(s => `<option value="${s.id}" ${x.sales_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}
+    <label>Saluran</label><select id="ch">${['Jabar', 'Lokal', 'Luar pulau', 'Modern market', 'Eceran'].map(v => `<option ${x.channel === v ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <label>Kelompok harga</label><select id="pg">${['Jbr', 'Sby/LP', 'Blitar'].map(v => `<option ${x.price_group === v ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    ${ME.role === 'owner' ? `<label>Tempo (hari, 0 = cash)</label><input id="tp" value="${x.tempo_days}" inputmode="numeric">` : `<p class="mut" style="font-size:12px">Tempo hanya bisa diatur Pak Benny. Pelanggan baru perlu persetujuan pemilik.</p>`}
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" onclick="this.closest('dialog').remove()">Batal</button><button class="btn" id="sv">Simpan</button></div>`;
+    document.body.append(dlg); dlg.showModal();
+    const v = id => dlg.querySelector('#' + id)?.value;
+    // pratinjau nama baku + pelanggan mirip yang sudah ada (semua sales), supaya tidak dobel
+    let tm;
+    const preview = () => { clearTimeout(tm); tm = setTimeout(async () => {
+      const r = await api(`customers/similar?core=${encodeURIComponent(v('n'))}&entity=${encodeURIComponent(v('en'))}&id=${x.id || 0}`);
+      dlg.querySelector('#nprev').innerHTML = (r.preview ? `<div class="mut" style="font-size:12px">Akan tersimpan sebagai: <b style="color:var(--ink)">${esc(r.preview)}</b></div>` : '') +
+        (r.similar.length ? `<div class="alert" style="margin-top:6px;font-size:12px"><b>Mirip dengan pelanggan yang sudah ada:</b><br>${r.similar.map(s => `• ${esc(s.name)} — ${esc(s.sales || 'Pemilik')}${s.address ? ' · ' + esc(s.address) : ''}`).join('<br>')}</div>` : '');
+    }, 250); };
+    dlg.querySelector('#n').oninput = preview; dlg.querySelector('#en').onchange = preview; if (x.id) preview();
+    const save = force => api('customers', { id: x.id, core: v('n'), entity: v('en'), phone: v('ph'), address: v('ad'), sales_id: v('s') ? +v('s') : null, channel: v('ch'), price_group: v('pg'), tempo_days: v('tp'), force });
+    dlg.querySelector('#sv').onclick = async () => {
+      let r;
+      try { r = await save(false); }
+      catch (e) { if (ME.role === 'sales' || !/sudah ada/.test(e.message) || !confirm(e.message + '\n\nTetap simpan sebagai pelanggan terpisah (mis. cabang lain)?')) return; r = await save(true); }
+      dlg.remove(); toast(r.needsApproval ? `${r.name} tersimpan, menunggu persetujuan Pak Benny` : `${r.name} tersimpan`); render(); };
+  };
+  $('#add').onclick = () => form();
+  document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => form(c.find(x => x.id == b.dataset.e)));
+};
+
+// ---------- Harga harian & stok ----------
+V.harga = async () => {
+  const p = await api('prices');
+  const wh = ME.role === 'warehouse';
+  $('#main').innerHTML = `<div class="card"><h3>${wh ? 'Stok pagi' : 'Harga harian, stok pagi & produk prioritas'} · ${new Date().toLocaleDateString('id-ID')}</h3>
+  <p class="mut" style="margin-top:0">${wh ? '' : 'Harga terisi dari hari sebelumnya; ubah yang berubah lalu simpan.'}</p>
+  <div class="scroll"><table><tr><th>Produk</th>${wh ? '' : '<th>⭐</th><th>Jbr</th><th>Sby/LP</th><th>Blitar</th>'}<th>Stok</th></tr>
+  ${p.map(x => `<tr data-id="${x.product_id}"><td>${esc(x.code)}<br><small class="mut">${x.unit}</small></td>
+  ${wh ? '' : `<td><input type="checkbox" data-k="priority" ${x.priority ? 'checked' : ''} style="width:auto"></td>${['Jbr', 'Sby/LP', 'Blitar'].map(g => `<td><input data-k="${g}" value="${x[g]}" inputmode="numeric" style="min-width:80px"></td>`).join('')}`}
+  <td><input data-k="stock" value="${x.stock ?? ''}" inputmode="numeric" style="min-width:80px"></td></tr>`).join('')}</table></div>
+  <button class="btn full" id="sv" style="margin-top:12px">Simpan</button></div>`;
+  $('#sv').onclick = async () => {
+    const rows = [...document.querySelectorAll('tr[data-id]')].map(tr => { const r = { product_id: +tr.dataset.id };
+      tr.querySelectorAll('[data-k]').forEach(i => r[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value); return r; });
+    await api('prices', { rows }); toast('Tersimpan');
+  };
+};
+
+// ---------- Target & kuota ----------
+V.target = async () => {
+  const [t, p] = await Promise.all([api('targets'), api('products')]);
+  const prio = p.filter(x => x.priority);
+  const own = ME.role === 'owner';
+  $('#main').innerHTML = `<div class="card"><h3>Target & kuota bulan ini</h3><p class="mut" style="margin-top:0">${own ? 'Target omzet, pelanggan baru, dan bonus dasar diisi pemilik.' : 'Admin mengisi kuota produk prioritas.'}</p>
+  <div class="scroll"><table><tr><th>Sales</th>${own ? '<th>Target omzet</th><th>Plg baru</th><th>Bonus dasar</th>' : ''}${prio.map(x => `<th>Kuota ${esc(x.code)}</th>`).join('')}</tr>
+  ${t.map(s => `<tr data-s="${s.sales_id}"><td>${esc(s.name)}</td>${own ? `<td><input data-k="omzet" value="${s.omzet || ''}" style="min-width:110px"></td><td><input data-k="new_customers" value="${s.new_customers || ''}" style="width:60px"></td><td><input data-k="bonus_base" value="${s.bonus_base || ''}" style="min-width:100px"></td>` : ''}
+  ${prio.map(x => `<td><input data-q="${x.id}" value="${(s.quotas.find(q => q.product_id === x.id) || {}).qty || ''}" style="min-width:80px"></td>`).join('')}</tr>`).join('')}</table></div>
+  <button class="btn full" id="sv" style="margin-top:12px">Simpan</button></div>`;
+  $('#sv').onclick = async () => {
+    const rows = [...document.querySelectorAll('tr[data-s]')].map(tr => { const r = { sales_id: +tr.dataset.s, quotas: [] };
+      tr.querySelectorAll('[data-k]').forEach(i => r[i.dataset.k] = i.value); tr.querySelectorAll('[data-q]').forEach(i => r.quotas.push({ product_id: +i.dataset.q, qty: i.value })); return r; });
+    await api('targets', { rows }); toast('Tersimpan');
+  };
+};
+
+// ---------- Retur ----------
+V.retur = async () => {
+  const r = await api('returns');
+  const canAp = ME.role === 'admin' || ME.role === 'owner';
+  $('#main').innerHTML = `<div class="card"><h3>Retur</h3><p class="mut" style="margin-top:0">Catat retur dari detail nota (menu Order → klik nota → Catat retur).</p><div class="scroll"><table><tr><th>Tgl</th><th>Nota</th><th>Pelanggan</th><th>Produk</th><th>Alasan</th><th class="r">Nilai</th><th>Status</th></tr>
+  ${r.map(x => `<tr><td>${x.date.slice(5)}</td><td>${x.no}</td><td>${esc(x.customer)}</td><td>${esc(x.code)} ${num(x.qty)}</td><td>${esc(x.reason)}</td><td class="r">${rp(x.amount)}</td>
+  <td>${x.status === 'pending' && canAp ? `<button class="btn sm ok" onclick="apr(${x.id},1)">Setujui</button> <button class="btn sm bad" onclick="apr(${x.id},0)">Tolak</button>` : `<span class="tag ${x.status === 'approved' ? 'ok' : x.status === 'pending' ? 'warn' : 'bad'}">${x.status}</span>`}</td></tr>`).join('') || '<tr><td class="mut">Belum ada</td></tr>'}</table></div></div>`;
+};
+async function apr(id, ok) { await api('returns/approve', { id, ok }); toast('Tersimpan'); render(); }
+
+// ---------- Kontak ----------
+V.kontak = async () => {
+  const [k, c] = await Promise.all([api('contacts'), api('customers')]);
+  $('#main').innerHTML = `<div class="card"><h3>Catat kontak pelanggan</h3><input id="kq" placeholder="🔍 Ketik nama pelanggan…" autocomplete="off"><input type="hidden" id="kc"><div id="kl" style="max-height:240px;overflow:auto"></div>
+  <label>Ditawari apa</label><input id="ko" placeholder="mis. AKM print promo"><label>Hasil</label><select id="kr"><option>Order</option><option>Pikir-pikir</option><option>Tidak berminat</option><option>Tidak bisa dihubungi</option></select>
+  <button class="btn full" id="ks" style="margin-top:10px">Simpan</button></div>
+  <div class="card"><h3>Riwayat</h3><table>${k.map(x => `<tr><td>${x.date.slice(5)}</td><td>${esc(x.customer)}</td><td>${esc(x.offer)}</td><td>${esc(x.result)}</td></tr>`).join('') || '<tr><td class="mut">Belum ada</td></tr>'}</table></div>`;
+  const kq = $('#kq');
+  kq.oninput = () => { $('#kc').value = ''; const q = kq.value.toLowerCase().trim();
+    $('#kl').innerHTML = !q ? '' : c.filter(x => x.name.toLowerCase().includes(q)).slice(0, 20).map(x => `<div class="item" data-k="${x.id}" style="cursor:pointer"><span>${esc(x.name)}</span></div>`).join('') || '<p class="mut">Tidak ditemukan</p>';
+    $('#kl').querySelectorAll('[data-k]').forEach(d => d.onclick = () => { $('#kc').value = d.dataset.k; kq.value = c.find(x => x.id == d.dataset.k).name; $('#kl').innerHTML = ''; }); };
+  $('#ks').onclick = async () => { if (!$('#kc').value) return toast('Pilih pelanggan dari daftar'); await api('contacts', { customer_id: +$('#kc').value, offer: $('#ko').value, result: $('#kr').value }); toast('Tersimpan'); render(); };
+};
+
+// ---------- Disiplin ----------
+V.disiplin = async () => {
+  const [v, users] = await Promise.all([api('violations'), api('users')]);
+  $('#main').innerHTML = `<div class="card"><h3>Catat pelanggaran disiplin</h3><p class="mut" style="margin-top:0">Sementara manual; nanti bisa dibaca dari mesin absen.</p>
+  <select id="vs">${users.filter(u => u.role === 'sales').map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select>
+  <label>Jenis</label><select id="vt"><option>Telat masuk</option><option>Telat kembali istirahat</option></select><label>Tanggal</label><input type="date" id="vd" value="${new Date().toISOString().slice(0, 10)}">
+  <button class="btn full" id="vb" style="margin-top:10px">Simpan</button></div>
+  <div class="card"><h3>Riwayat</h3><table>${v.map(x => `<tr><td>${x.date}</td><td>${esc(x.sales)}</td><td>${esc(x.type)}</td></tr>`).join('')}</table></div>`;
+  $('#vb').onclick = async () => { await api('violations', { sales_id: +$('#vs').value, type: $('#vt').value, date: $('#vd').value }); toast('Tersimpan'); render(); };
+};
+
+// ---------- Produk ----------
+V.produk = async () => {
+  const p = await api('products');
+  $('#main').innerHTML = `<div class="card"><h3>Produk</h3><table><tr><th>Kode</th><th>Nama</th><th>Satuan</th><th>Prioritas</th></tr>
+  ${p.map(x => `<tr><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${x.unit}</td><td>${x.priority ? '⭐' : ''}</td></tr>`).join('')}</table></div>
+  <div class="card"><h3>Tambah produk</h3><label>Kode</label><input id="pc"><label>Nama</label><input id="pn"><label>Satuan</label><select id="pu">${['butir', 'kg', 'tray', 'dos', 'ikat'].map(u => `<option>${u}</option>`).join('')}</select>
+  <button class="btn full" id="pb" style="margin-top:10px">Tambah</button></div>`;
+  $('#pb').onclick = async () => { await api('products', { code: $('#pc').value, name: $('#pn').value, unit: $('#pu').value }); toast('Ditambahkan'); render(); };
+};
+
+// ---------- Rekap & ekspor ----------
+V.rekap = async () => {
+  const r = await api('recap');
+  $('#main').innerHTML = `<div class="card"><h3>Rekap harian otomatis</h3><p class="mut" style="margin-top:0">Pengganti rekap sore manual. Di versi jadi, teks ini dikirim otomatis ke WhatsApp Pak Benny tiap sore.</p>
+  <pre id="rt">${esc(r.text)}</pre><button class="btn" id="cp">Salin untuk WhatsApp</button></div>`;
+  $('#cp').onclick = () => { navigator.clipboard.writeText(r.text); toast('Disalin'); };
+};
+V.lain = async () => {
+  const log = ME.role === 'finance' ? [] : await api('audit');
+  $('#main').innerHTML = `<div class="card"><h3>Ekspor ke Excel</h3><div class="row">
+  ${[['orders', 'Semua order'], ['piutang', 'Piutang'], ['pelanggan', 'Pelanggan']].map(([k, l]) => `<a class="btn ghost" href="/export/${k}?t=${TOKEN}">${l} (.csv)</a>`).join('')}</div></div>
+  ${log.length ? `<div class="card"><h3>Log perubahan (200 terakhir)</h3><div class="scroll"><table>${log.map(a => `<tr><td class="mut">${a.ts.slice(0, 16).replace('T', ' ')}</td><td>${esc(a.name)}</td><td>${a.action}</td><td class="mut" style="font-size:11px">${esc(a.detail).slice(0, 120)}</td></tr>`).join('')}</table></div></div>` : ''}`;
+};
+
+render();
+</script></body></html>

@@ -4,7 +4,7 @@ Pasang di VPS Ornova `45.77.36.205`, mengikuti pola `vps-tambah-aplikasi-oee.md`
 Aplikasi ini server Node tanpa dependency dengan database SQLite dalam satu file, jadi tidak perlu
 database terpisah. Pemakaian RAM sekitar 40–60 MB.
 
-> **Sebelum dibuka ke internet:** semua PIN contoh adalah `1234` dan datanya data contoh.
+> **Sebelum dibuka ke internet:** semua password contoh adalah `ois` dan datanya data contoh.
 > Untuk demo ke klien ini tidak masalah, tapi jangan dipakai untuk data asli sebelum login
 > diperkuat.
 

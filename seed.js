@@ -1,4 +1,4 @@
-// Data contoh untuk uji coba — bukan data asli PT Bumi Ayu Sejati
+// Data contoh untuk uji coba — bukan data asli Kentang Brokoli
 module.exports = function seed(db, { today, addDays }) {
   const run = (sql, ...p) => db.prepare(sql).run(...p);
   let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -10,7 +10,7 @@ module.exports = function seed(db, { today, addDays }) {
     ['Rahmi', 'rahmi', 'sales'], ['Puji', 'puji', 'sales'], ['Amel', 'amel', 'sales'], ['Anggun', 'anggun', 'sales'],
     ['Keuangan', 'keuangan', 'finance'], ['Gudang', 'gudang', 'warehouse'],
   ];
-  users.forEach(u => run('INSERT INTO users(name,username,pin,role) VALUES(?,?,?,?)', u[0], u[1], '1234', u[2]));
+  users.forEach(u => run('INSERT INTO users(name,username,pin,role) VALUES(?,?,?,?)', u[0], u[1], 'ois', u[2]));
   const sales = [3, 4, 5, 6];
 
   // [kode, nama, satuan, prioritas, harga Jbr]

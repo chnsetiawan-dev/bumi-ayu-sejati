@@ -82,8 +82,8 @@ async function loginView() {
   const roleName = { owner: 'Pemilik', admin: 'Admin', sales: 'Sales', finance: 'Keuangan', warehouse: 'Gudang' };
   $('#app').innerHTML = `<div class="login card"><h2 style="margin-top:0">Kentang Brokoli</h2>
     <label>Pengguna</label><select id="u">${users.map(u => `<option value="${u.username}">${esc(u.name)} — ${roleName[u.role]}</option>`).join('')}</select>
-    <label>PIN</label><input id="p" type="password" inputmode="numeric" value="1234">
-    <p class="mut" style="font-size:12px">Prototipe: semua PIN contoh = 1234</p><button class="btn full" id="go">Masuk</button></div>`;
+    <label>Password</label><input id="p" type="password" autocomplete="current-password">
+    <button class="btn full" id="go">Masuk</button></div>`;
   $('#go').onclick = async () => { const r = await api('login', { username: $('#u').value, pin: $('#p').value }); TOKEN = r.token; localStorage.tok = TOKEN; ME = r.user; location.hash = ''; render(); };
 }
 
@@ -285,7 +285,7 @@ async function printSJ(ids) {
   .sig{display:flex;justify-content:space-between;margin-top:36px;text-align:center}.sig div{width:30%}.sig span{display:block;margin-top:60px;border-top:1px solid #000;padding-top:4px}
   @media print{button{display:none}}</style></head><body>
   <button onclick="print()" style="position:fixed;right:16px;top:16px;padding:10px 16px;font-size:14px">🖨 Cetak</button>
-  ${list.map(o => `<div class="pg"><div class="hd"><div><h1>PT BUMI AYU SEJATI</h1><small>Alamat perusahaan · Telp</small></div><div style="text-align:right"><h2>SURAT JALAN</h2>No. SJ-${o.no.slice(2)}</div></div>
+  ${list.map(o => `<div class="pg"><div class="hd"><div><h1>KENTANG BROKOLI</h1><small>Alamat perusahaan · Telp</small></div><div style="text-align:right"><h2>SURAT JALAN</h2>No. SJ-${o.no.slice(2)}</div></div>
   <div class="info"><table><tr><td>Kepada</td><td>: <b>${esc(o.customer)}</b></td></tr><tr><td>Alamat</td><td>: ${esc(o.address || '-')}</td></tr><tr><td>Telp</td><td>: ${esc(o.phone || '-')}</td></tr></table>
   <table><tr><td>Tanggal kirim</td><td>: ${tgl(o.ship_date)}</td></tr><tr><td>No. Nota</td><td>: ${o.no}</td></tr><tr><td>Sales</td><td>: ${esc(o.sales || 'Pemilik')}</td></tr></table></div>
   <table class="it"><tr><th style="width:40px">No</th><th>Kode</th><th>Nama barang</th><th class="r">Jumlah</th><th>Satuan</th><th>Keterangan</th></tr>

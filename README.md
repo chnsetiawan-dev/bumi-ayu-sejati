@@ -1,4 +1,4 @@
-# Aplikasi Penjualan PT Bumi Ayu Sejati (prototipe)
+# Aplikasi Penjualan Kentang Brokoli (prototipe)
 
 Prototipe aplikasi penjualan, piutang, dan KPI tim pemasaran.
 
@@ -10,7 +10,7 @@ Butuh Node.js 22 atau lebih baru, tanpa dependency.
 node server.js
 ```
 
-Buka http://localhost:3000. Database `data.db` (SQLite) dibuat otomatis dengan data contoh saat pertama jalan. Semua PIN contoh: `1234`.
+Buka http://localhost:3000. Database `data.db` (SQLite) dibuat otomatis dengan data contoh saat pertama jalan. Password semua pengguna contoh: `ois`.
 
 ## Peran
 

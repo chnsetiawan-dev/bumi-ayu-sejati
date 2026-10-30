@@ -1,4 +1,4 @@
-// Aplikasi Penjualan PT Bumi Ayu Sejati — prototipe lokal (Node 22+, tanpa dependency)
+// Aplikasi Penjualan Kentang Brokoli — prototipe lokal (Node 22+, tanpa dependency)
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -241,7 +241,7 @@ const csv = rows => {
 const routes = {
   'POST /api/login': (u, b) => {
     const user = get('SELECT id,name,role,username FROM users WHERE username=? AND pin=?', b.username, b.pin);
-    if (!user) throw Object.assign(new Error('Username / PIN salah'), { code: 401 });
+    if (!user) throw Object.assign(new Error('Username / password salah'), { code: 401 });
     const tok = crypto.randomBytes(16).toString('hex');
     sessions.set(tok, user);
     return { token: tok, user };
@@ -396,4 +396,4 @@ http.createServer(async (req, res) => {
     if (req.method === 'POST') { let s = ''; for await (const c of req) s += c; body = s ? JSON.parse(s) : {}; }
     send(res, 200, h(user, body, Object.fromEntries(url.searchParams)));
   } catch (e) { send(res, typeof e.code === "number" ? e.code : 400, { error: e.message }); }
-}).listen(PORT, () => console.log(`Aplikasi Penjualan Bumi Ayu jalan di http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`Kentang Brokoli jalan di http://localhost:${PORT}`));

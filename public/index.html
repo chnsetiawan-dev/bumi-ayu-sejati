@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Penjualan Bumi Ayu</title>
+<title>Kentang Brokoli</title>
 <style>
 :root{--bg:#f2f4f8;--card:#fff;--ink:#1b2430;--mut:#6b7686;--line:#e3e7ee;--pri:#1f5fbf;--ok:#1e8a4c;--warn:#c98a00;--bad:#c62828}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink)}
@@ -70,7 +70,7 @@ async function render() {
   if (!ME) try { ME = await api('me'); } catch { return; }
   const menu = MENUS[ME.role];
   VIEW = location.hash.slice(1) || menu[0][0];
-  $('#app').innerHTML = `<header><div><b>Penjualan Bumi Ayu</b><br><small>${esc(ME.name)} · ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</small></div>
+  $('#app').innerHTML = `<header><div><b>Kentang Brokoli</b><br><small>${esc(ME.name)} · ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</small></div>
     <button onclick="logout()">Keluar</button></header>
     <nav>${menu.map(([k, l]) => `<a href="#${k}" class="${k === VIEW ? 'on' : ''}">${l}</a>`).join('')}</nav><main id="main">Memuat…</main>`;
   try { await (V[VIEW] || V.pantau)(); } catch (e) { $('#main').innerHTML = `<div class="alert bad">${esc(e.message)}</div>`; }
@@ -80,7 +80,7 @@ window.onhashchange = render;
 async function loginView() {
   const users = await api('users');
   const roleName = { owner: 'Pemilik', admin: 'Admin', sales: 'Sales', finance: 'Keuangan', warehouse: 'Gudang' };
-  $('#app').innerHTML = `<div class="login card"><h2 style="margin-top:0">Penjualan Bumi Ayu</h2>
+  $('#app').innerHTML = `<div class="login card"><h2 style="margin-top:0">Kentang Brokoli</h2>
     <label>Pengguna</label><select id="u">${users.map(u => `<option value="${u.username}">${esc(u.name)} — ${roleName[u.role]}</option>`).join('')}</select>
     <label>PIN</label><input id="p" type="password" inputmode="numeric" value="1234">
     <p class="mut" style="font-size:12px">Prototipe: semua PIN contoh = 1234</p><button class="btn full" id="go">Masuk</button></div>`;

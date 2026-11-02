@@ -45,6 +45,7 @@ const audit = (uid, action, detail) => run('INSERT INTO audit(ts,user_id,action,
 const MAX_DISC = { butir: 100, kg: 500 };
 
 if (fresh) require('./seed')(db, { today, addDays });
+const N = require('./notify')(db);
 
 // ---------- penamaan pelanggan baku: "Nama Inti, Badan Usaha" (mis. "Superindo, PT", "Amir, Toko") ----------
 const ENTITIES = ['PT', 'CV', 'UD', 'Toko', 'Warung', 'Agen', 'Kios', 'Resto', 'Koperasi', 'Perorangan'];
@@ -143,6 +144,8 @@ function createOrder(user, b) {
   const oid = Number(r.lastInsertRowid);
   for (const it of rows) run('INSERT INTO order_items(order_id,product_id,qty,price,discount) VALUES(?,?,?,?,?)', oid, it.product_id, it.qty, it.price, it.discount);
   audit(user.id, 'order.create', { no, total, status, reasons });
+  if (status === 'pending') N.toRole(['owner'], { title: 'Minta persetujuan: ' + no, body: `${c.name} · ${fmt(total)}\n${reasons.join('\n')}`, url: '#setuju' });
+  else N.toRole(['warehouse'], { title: 'Order siap disiapkan: ' + no, body: `${c.name} · kirim ${ship}`, url: '#kirim' });
   return { id: oid, no, status, reasons, total };
 }
 
@@ -247,7 +250,16 @@ const routes = {
     return { token: tok, user };
   },
   'GET /api/users': () => all("SELECT id,name,username,role FROM users ORDER BY instr('owner admin sales finance warehouse', role), name"),
-  'GET /api/me': u => u,
+  'GET /api/me': u => ({ ...u, ...get('SELECT email, email_on FROM users WHERE id=?', u.id), emailReady: N.emailReady }),
+  'POST /api/me/email': (u, b) => { const e = String(b.email || '').trim();
+    if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('Format email tidak valid');
+    run('UPDATE users SET email=?, email_on=? WHERE id=?', e, b.email_on ? 1 : 0, u.id); return { ok: 1 }; },
+  'GET /api/notif': u => N.list(u.id),
+  'POST /api/notif/read': u => { N.markRead(u.id); return { ok: 1 }; },
+  'GET /api/push/key': () => ({ key: N.publicKey }),
+  'POST /api/push/subscribe': (u, b) => { if (!b.endpoint) throw new Error('Langganan tidak valid'); N.subscribe(u.id, b); return { ok: 1 }; },
+  'POST /api/push/unsubscribe': (u, b) => { N.unsubscribe(b.endpoint); return { ok: 1 }; },
+  'POST /api/notif/test': u => { N.notify([u.id], { title: 'Tes notifikasi', body: 'Notifikasi Kentang Brokoli sudah aktif di perangkat ini.', url: '#notif' }); return { ok: 1 }; },
   'GET /api/dashboard': u => dashboard(u),
   'GET /api/kpi': (u, b, q) => kpi(q.month || month()).filter(x => u.role !== 'sales' || x.sales_id === u.id),
 
@@ -275,7 +287,9 @@ const routes = {
       name, entity, key, b.phone || "", b.address || "", sales, b.channel, b.price_group, tempo, approved, b.id);
     else run('INSERT INTO customers(name,entity,name_key,phone,address,sales_id,channel,price_group,tempo_days,approved,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
       name, entity, key, b.phone || "", b.address || "", sales, b.channel, b.price_group, tempo, approved, today());
-    audit(u.id, 'customer.save', { ...b, name }); return { ok: 1, name, needsApproval: !approved }; },
+    audit(u.id, 'customer.save', { ...b, name });
+    if (!approved && !b.id) N.toRole(['owner'], { title: 'Pelanggan baru minta persetujuan', body: `${name} · dari ${u.name}`, url: '#setuju' });
+    return { ok: 1, name, needsApproval: !approved }; },
   'GET /api/customers/similar': (u, b, q) => ({ preview: q.core ? formatName(q.core, q.entity) : '', similar: similarCustomers(q.core || '', +q.id).slice(0, 8) }),
   'POST /api/customers/approve': (u, b) => { need(u, 'owner'); run('UPDATE customers SET approved=1, tempo_days=? WHERE id=?', Number(b.tempo_days || 0), b.id); audit(u.id, 'customer.approve', b); return { ok: 1 }; },
 
@@ -308,17 +322,24 @@ const routes = {
     o.history = all("SELECT a.ts, a.action, a.detail, u.name FROM audit a LEFT JOIN users u ON u.id=a.user_id WHERE a.detail LIKE ? ORDER BY a.id", `%"${o.no}"%`);
     return o; },
   'POST /api/orders': (u, b) => { need(u, 'sales', 'admin', 'owner'); return createOrder(u, b); },
-  'POST /api/orders/approve': (u, b) => { need(u, 'owner'); const o = get('SELECT no FROM orders WHERE id=?', b.id);
+  'POST /api/orders/approve': (u, b) => { need(u, 'owner'); const o = get('SELECT o.no, o.created_by, o.sales_id, o.ship_date, c.name customer FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.id=?', b.id);
     run("UPDATE orders SET status=? WHERE id=? AND status='pending'", b.ok ? 'approved' : 'rejected', b.id);
-    audit(u.id, b.ok ? 'order.approve' : 'order.reject', { no: o.no }); return { ok: 1 }; },
+    audit(u.id, b.ok ? 'order.approve' : 'order.reject', { no: o.no });
+    N.notify([o.created_by, o.sales_id], { title: `${o.no} ${b.ok ? 'disetujui' : 'ditolak'} Pak Benny`, body: o.customer, url: '#orders' });
+    if (b.ok) N.toRole(['warehouse'], { title: 'Order siap disiapkan: ' + o.no, body: `${o.customer} · kirim ${o.ship_date}`, url: '#kirim' });
+    return { ok: 1 }; },
   'POST /api/orders/ship': (u, b) => { need(u, 'warehouse', 'admin', 'owner'); const o = get('SELECT no FROM orders WHERE id=?', b.id);
     run("UPDATE orders SET status='shipped', shipped_at=? WHERE id=? AND status='approved'", new Date().toISOString(), b.id);
-    audit(u.id, 'order.ship', { no: o.no }); return { ok: 1 }; },
+    audit(u.id, 'order.ship', { no: o.no });
+    const so = get('SELECT o.sales_id, c.name customer FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.id=?', b.id);
+    N.notify([so.sales_id], { title: o.no + ' sudah dikirim', body: so.customer, url: '#orders' }); return { ok: 1 }; },
 
   'GET /api/receivables': u => outstanding(u.role === 'sales' ? 'AND sales_id=?' : '', ...(u.role === 'sales' ? [u.id] : [])),
   'POST /api/payments': (u, b) => { need(u, 'finance', 'owner', 'admin'); const o = get('SELECT no FROM orders WHERE id=?', b.order_id);
     run('INSERT INTO payments(order_id,amount,date,method,created_by) VALUES(?,?,?,?,?)', b.order_id, Number(b.amount), b.date || today(), b.method, u.id);
-    audit(u.id, 'payment.add', { no: o.no, amount: b.amount, method: b.method }); return { ok: 1 }; },
+    audit(u.id, 'payment.add', { no: o.no, amount: b.amount, method: b.method });
+    const po = get('SELECT o.sales_id, c.name customer FROM orders o JOIN customers c ON c.id=o.customer_id WHERE o.id=?', b.order_id);
+    N.notify([po.sales_id], { title: 'Pembayaran diterima ' + o.no, body: `${po.customer} · ${fmt(b.amount)} (${b.method})`, url: '#piutang' }); return { ok: 1 }; },
 
   'GET /api/returns': u => all(`SELECT r.*, o.no, c.name customer, p.code, us.name sales FROM returns r JOIN orders o ON o.id=r.order_id
     JOIN customers c ON c.id=o.customer_id JOIN products p ON p.id=r.product_id LEFT JOIN users us ON us.id=o.sales_id
@@ -329,7 +350,9 @@ const routes = {
     const amount = (it.price - it.discount) * Number(b.qty);
     run('INSERT INTO returns(order_id,product_id,qty,amount,reason,status,date,created_by) VALUES(?,?,?,?,?,?,?,?)',
       b.order_id, b.product_id, Number(b.qty), amount, b.reason, u.role === 'sales' ? 'pending' : 'approved', today(), u.id);
-    audit(u.id, 'return.add', { no: it.no, qty: b.qty, amount }); return { ok: 1 }; },
+    audit(u.id, 'return.add', { no: it.no, qty: b.qty, amount });
+    if (u.role === 'sales') N.toRole(['admin'], { title: 'Retur perlu disetujui: ' + it.no, body: `${u.name} · ${b.qty} · ${b.reason || ''}`, url: '#retur' });
+    return { ok: 1 }; },
   'POST /api/returns/approve': (u, b) => { need(u, 'admin', 'owner'); run("UPDATE returns SET status=? WHERE id=?", b.ok ? 'approved' : 'rejected', b.id);
     audit(u.id, 'return.' + (b.ok ? 'approve' : 'reject'), { id: b.id }); return { ok: 1 }; },
 
@@ -378,7 +401,7 @@ http.createServer(async (req, res) => {
       const f = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : path.normalize(url.pathname).replace(/^[\\/]+/, ''));
       if (!f.startsWith(path.join(__dirname, 'public')) || !fs.existsSync(f)) return send(res, 404, 'not found', 'text/plain');
       const ext = path.extname(f);
-      return send(res, 200, fs.readFileSync(f), { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[ext] || 'application/octet-stream');
+      return send(res, 200, fs.readFileSync(f), { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml' }[ext] || 'application/octet-stream');
     }
     const tok = (req.headers.authorization || '').replace('Bearer ', '') || url.searchParams.get('t');
     const user = sessions.get(tok);
@@ -397,3 +420,14 @@ http.createServer(async (req, res) => {
     send(res, 200, h(user, body, Object.fromEntries(url.searchParams)));
   } catch (e) { send(res, typeof e.code === "number" ? e.code : 400, { error: e.message }); }
 }).listen(PORT, () => console.log(`Kentang Brokoli jalan di http://localhost:${PORT}`));
+
+// ringkasan sore 17:00 ke pemilik (lonceng + push + email), sekali per hari
+setInterval(() => {
+  const d = today();
+  if (new Date().getHours() < 17 || N.setting('recap_sent') === d) return;
+  N.setting('recap_sent', d);
+  try {
+    const text = routes['GET /api/recap']({ role: 'owner' }, {}, { date: d }).text.replace(/\*/g, '');
+    N.toRole(['owner'], { title: 'Rekap sore ' + d, body: text.split('\n').slice(1).join('\n'), url: '#rekap' });
+  } catch (e) { console.error('rekap', e.message); }
+}, 60000);

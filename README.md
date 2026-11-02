@@ -4,7 +4,7 @@ Prototipe aplikasi penjualan, piutang, dan KPI tim pemasaran.
 
 ## Menjalankan
 
-Butuh Node.js 22 atau lebih baru, tanpa dependency.
+Butuh Node.js 22 atau lebih baru. Jalankan `npm install` sekali (web-push, nodemailer).
 
 ```
 node server.js

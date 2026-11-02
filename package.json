@@ -1,0 +1,14 @@
+{
+  "name": "kentang-brokoli",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.16",
+    "web-push": "^3.6.7"
+  }
+}

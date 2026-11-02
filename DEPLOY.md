@@ -127,7 +127,7 @@ Container lain harus tetap `Up` dengan waktu hidup yang lama.
 ## Update aplikasi
 
 ```bash
-cd /var/www/bas-app && git pull && docker restart bas-app
+cd /var/www/bas-app && git pull && docker exec bas-app npm install --omit=dev && docker restart bas-app
 ```
 
 `data.db` tidak ikut tertimpa karena masuk `.gitignore`.
@@ -146,3 +146,19 @@ cp /root/docker-compose.yml.bak-<tanggal> /root/docker-compose.yml
 cp /root/Caddyfile.bak-<tanggal> /root/Caddyfile
 docker exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
+
+## Email notifikasi (opsional)
+
+Email aktif bila variabel ini ditambahkan di blok `environment` service `bas-app`
+(lalu `docker compose up -d --no-deps bas-app`):
+
+```yaml
+      - APP_URL=https://bas.ornovaintegrasolusi.com
+      - SMTP_HOST=smtp.contoh.com
+      - SMTP_PORT=587
+      - SMTP_USER=notifikasi@contoh.com
+      - SMTP_PASS=********
+      - SMTP_FROM=Kentang Brokoli <notifikasi@contoh.com>
+```
+
+Push notification tidak butuh pengaturan apa pun; kuncinya dibuat otomatis dan disimpan di `data.db`.
